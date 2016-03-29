@@ -6,10 +6,10 @@ from trytond.model import fields
 from trytond.transaction import Transaction
 
 __all__ = ['SaleLine']
-__metaclass__ = PoolMeta
 
 
 class SaleLine:
+    __metaclass__ = PoolMeta
     __name__ = 'sale.line'
 
     @fields.depends('product')
