@@ -9,46 +9,33 @@ Imports::
     >>> from decimal import Decimal
     >>> from operator import attrgetter
     >>> from proteus import config, Model, Wizard, Report
+    >>> from trytond.tests.tools import activate_modules
     >>> from trytond.modules.company.tests.tools import create_company, \
     ...     get_company
     >>> from trytond.modules.account.tests.tools import create_fiscalyear, \
     ...     create_chart, get_accounts, create_tax
-    >>> from.trytond.modules.account_invoice.tests.tools import \
+    >>> from trytond.modules.account_invoice.tests.tools import \
     ...     set_fiscalyear_invoice_sequences, create_payment_term
     >>> today = datetime.date.today()
 
-Create database::
+Install sale_description::
 
-    >>> config = config.set_trytond()
-    >>> config.pool.test = True
-
-Install sale::
-
-    >>> Module = Model.get('ir.module')
-    >>> sale_module, = Module.find([('name', '=', 'sale_description')])
-    >>> sale_module.click('install')
-    >>> Wizard('ir.module.install_upgrade').execute('upgrade')
+    >>> config = activate_modules('sale_description')
 
 Create company::
 
     >>> _ = create_company()
     >>> company = get_company()
 
-Reload the context::
-
-    >>> User = Model.get('res.user')
-    >>> Group = Model.get('res.group')
-    >>> config._context = User.get_preferences(True, config.context)
-
 Translatable Lang::
 
     >>> Lang = Model.get('ir.lang')
 
-    >>> lang_es, = Lang.find([('code', '=', 'es_ES')], limit=1)
+    >>> lang_es, = Lang.find([('code', '=', 'es')], limit=1)
     >>> lang_es.translatable = True
     >>> lang_es.save()
 
-    >>> lang_ca, = Lang.find([('code', '=', 'ca_ES')], limit=1)
+    >>> lang_ca, = Lang.find([('code', '=', 'ca')], limit=1)
     >>> lang_ca.translatable = True
     >>> lang_ca.save()
 
@@ -91,11 +78,18 @@ Create parties::
     >>> customer_ca.lang = lang_ca
     >>> customer_ca.save()
 
-Create category::
+Create account categories::
 
     >>> ProductCategory = Model.get('product.category')
-    >>> category = ProductCategory(name='Category')
-    >>> category.save()
+    >>> account_category = ProductCategory(name="Account Category")
+    >>> account_category.accounting = True
+    >>> account_category.account_expense = expense
+    >>> account_category.account_revenue = revenue
+    >>> account_category.save()
+
+    >>> account_category_tax, = account_category.duplicate()
+    >>> account_category_tax.customer_taxes.append(tax)
+    >>> account_category_tax.save()
 
 Create product::
 
@@ -104,11 +98,10 @@ Create product::
     >>> ProductTemplate = Model.get('product.template')
     >>> Product = Model.get('product.product')
 
-    >>> config._context['language'] = 'es_ES'
+    >>> config._context['language'] = 'es'
     >>> product = Product()
     >>> template = ProductTemplate()
     >>> template.name = 'Product'
-    >>> template.category = category
     >>> template.default_uom = unit
     >>> template.type = 'goods'
     >>> template.purchasable = True
@@ -116,19 +109,17 @@ Create product::
     >>> template.list_price = Decimal('10')
     >>> template.cost_price = Decimal('5')
     >>> template.cost_price_method = 'fixed'
-    >>> template.account_expense = expense
-    >>> template.account_revenue = revenue
-    >>> template.customer_taxes.append(tax)
+    >>> template.account_category = account_category_tax
     >>> template.save()
-    >>> product.template = template
+    >>> product, = template.products
     >>> product.description = 'Description es_ES'
     >>> product.save()
 
-    >>> config._context['language'] = 'ca_ES'
+    >>> config._context['language'] = 'ca'
     >>> product.description = 'Description ca_ES'
     >>> product.save()
 
-Sale es_ES and ca_ES::
+Sale es and ca::
 
     >>> Sale = Model.get('sale.sale')
     >>> SaleLine = Model.get('sale.line')
@@ -138,11 +129,11 @@ Sale es_ES and ca_ES::
     >>> sale_line_es = sale_es.lines.new()
     >>> sale_line_es.product = product
     >>> sale_line_es.description
-    u'Description es_ES'
+    'Description es_ES'
 
     >>> sale_ca = Sale()
     >>> sale_ca.party = customer_ca
     >>> sale_line_ca = sale_ca.lines.new()
     >>> sale_line_ca.product = product
     >>> sale_line_ca.description
-    u'Description ca_ES'
+    'Description ca_ES'
